@@ -1,0 +1,36 @@
+PROJECT AURORA: DISTRIBUTED QUANTUM-RESISTANT STORAGE PLATFORM
+System Architecture & Engineering Specification v4.2
+Last Updated: November 10, 2026
+Lead Architect: Dr. Sarah Chen (sarah.chen@aurora.io)
+
+1. SYSTEM OVERVIEW
+Project Aurora is a next-generation distributed object storage infrastructure designed to withstand quantum cryptanalytic attacks while delivering sub-millisecond retrieval latencies. It integrates lattice-based cryptography (Kyber-1024 for key encapsulation and Dilithium for digital signatures) across a geo-replicated erasure-coded storage mesh.
+
+2. CORE PERFORMANCE METRICS & SLA
+- Peak Read Throughput: 140 GB/s per storage cluster
+- P99 Retrieval Latency: < 1.8 milliseconds for cached hot blocks; < 12ms for cold blocks
+- Availability Target: 99.999% (Five Nines) annual uptime SLA
+- Erasure Coding Configuration: 16+4 Reed-Solomon scheme allowing up to 4 concurrent disk/node failures without data loss.
+
+3. HARDWARE REQUIREMENTS
+- Minimum Storage Node: AMD EPYC 9654 (96 Cores, 2.4 GHz), 768 GB DDR5 ECC RAM, 8x 15.36TB NVMe U.2 SSDs (PCIe Gen 5).
+- Network Fabric: Dual 200 GbE NVIDIA ConnectX-7 NICs configured with RoCEv2 (RDMA over Converged Ethernet).
+- Operating Environment: Enterprise Linux Kernel 6.12+ with io_uring asynchronous I/O engine enabled.
+
+4. API ENDPOINTS & ACCESS CONTROL
+All requests must be signed using SHA-3 HMAC headers.
+- POST /v2/objects/put: Ingests payload with client-side Kyber encryption. Supports streaming up to 5TB single object.
+- GET /v2/objects/{object_id}: Fetches decrypted stream with cryptographic integrity checksum verification.
+- DELETE /v2/objects/{object_id}: Executes cryptographic shredding (ephemeral key destruction).
+- GET /v2/cluster/health: Returns cluster topology, node health scores, and disk failure predictions.
+
+5. MILESTONE ROADMAP
+- Q1 2027: Beta deployment across Frankfurt and Singapore data centers (Target: 25 PB capacity).
+- Q2 2027: SOC2 Type II audit completion and independent third-party cryptographic review.
+- Q3 2027: General Availability (GA) commercial rollout for healthcare and banking partners.
+- Q4 2027: Multi-cloud federation connector for AWS S3 and Google Cloud Storage.
+
+6. PRIMARY CONTACTS & ESCALATIONS
+- Engineering On-Call: Slack channel #aurora-eng-oncall
+- Security Vulnerabilities: security@aurora.io (PGP Key ID: 0x9AF83E1B)
+- Product Manager: Marcus Vance (marcus.vance@aurora.io)

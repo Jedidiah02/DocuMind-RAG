@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocuMind — Universal RAG & Document Assistant</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+              900: '#312e81',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Marked for Markdown rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- DOMPurify for XSS safety -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js"></script>
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="h-full flex overflow-hidden font-sans antialiased selection:bg-indigo-500/30 selection:text-indigo-200">
+
+  <!-- ==================== SIDEBAR: DOCUMENT HUB ==================== -->
+  <aside class="w-80 md:w-96 bg-slate-900/90 backdrop-blur border-r border-slate-800 flex flex-col flex-shrink-0 z-20">
+    <!-- App Logo & Branding -->
+    <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i data-lucide="sparkles" class="w-5 h-5 text-white"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-base tracking-tight flex items-center gap-2 text-white">
+            DocuMind <span class="text-[10px] bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-1.5 py-0.5 rounded font-mono">RAG v2.0</span>
+          </h1>
+          <p class="text-xs text-slate-400">Intelligent Document Assistant</p>
+        </div>
+      </div>
+      <button id="open-settings-btn" title="Settings & API Key" class="p-2 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition">
+        <i data-lucide="settings" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <!-- Upload Dropzone -->
+    <div class="p-4 border-b border-slate-800">
+      <div id="dropzone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500/60 rounded-xl p-4 text-center cursor-pointer transition bg-slate-950/40 hover:bg-indigo-950/20 group">
+        <input type="file" id="file-input" class="hidden" multiple accept=".pdf,.docx,.txt,.md,.csv,.json,.py,.js">
+        <div class="flex flex-col items-center gap-2">
+          <div class="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 group-hover:text-indigo-400 group-hover:bg-indigo-900/40 transition">
+            <i data-lucide="upload-cloud" class="w-5 h-5"></i>
+          </div>
+          <div class="text-xs">
+            <span class="font-semibold text-indigo-400 group-hover:text-indigo-300">Click to upload</span> or drag & drop
+          </div>
+          <p class="text-[11px] text-slate-500">PDF, DOCX, Markdown, TXT, CSV, JSON</p>
+        </div>
+      </div>
+
+      <!-- Quick Action: Load Sample Docs -->
+      <div class="mt-3 flex items-center gap-2">
+        <button id="load-samples-btn" class="flex-1 py-1.5 px-3 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-xs text-slate-300 hover:text-white border border-slate-700/60 transition flex items-center justify-center gap-1.5">
+          <i data-lucide="folder-git-2" class="w-3.5 h-3.5 text-indigo-400"></i>
+          <span>Load 3 Sample Docs</span>
+        </button>
+        <button id="clear-docs-btn" title="Remove all documents" class="py-1.5 px-2.5 rounded-lg bg-slate-800/80 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-700/60 transition text-xs">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Filter / Scope Selector -->
+    <div class="px-4 py-2.5 border-b border-slate-800/80 bg-slate-950/30 flex items-center justify-between text-xs">
+      <span class="text-slate-400 font-medium">Chat Scope:</span>
+      <select id="doc-scope-select" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-md px-2 py-1 focus:outline-none focus:border-indigo-500 max-w-[190px] truncate">
+        <option value="">All Documents (Full Corpus)</option>
+      </select>
+    </div>
+
+    <!-- Active Documents List -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-2.5 custom-scrollbar">
+      <div class="flex items-center justify-between text-xs text-slate-400 uppercase tracking-wider font-semibold mb-1">
+        <span>Knowledge Base</span>
+        <span id="doc-count-badge" class="bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded text-[10px]">0 docs</span>
+      </div>
+
+      <div id="documents-list" class="space-y-2">
+        <!-- Rendered by JS -->
+        <div id="empty-docs-placeholder" class="text-center py-8 text-slate-500 text-xs">
+          <i data-lucide="files" class="w-8 h-8 mx-auto mb-2 text-slate-600 opacity-60"></i>
+          No documents loaded.<br>Upload files or load samples to begin.
+        </div>
+      </div>
+    </div>
+
+    <!-- Document Assistance Quick Tools -->
+    <div class="p-4 border-t border-slate-800 bg-slate-950/40 space-y-2">
+      <div class="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1 flex items-center justify-between">
+        <span>⚡ Quick Document Tools</span>
+      </div>
+      <div class="grid grid-cols-2 gap-1.5">
+        <button class="quick-action-btn py-1.5 px-2 bg-slate-800/90 hover:bg-indigo-600/20 hover:border-indigo-500/50 border border-slate-700/80 rounded-lg text-[11px] text-slate-300 flex items-center gap-1.5 transition text-left" data-action="summary">
+          <i data-lucide="file-text" class="w-3.5 h-3.5 text-indigo-400 flex-shrink-0"></i>
+          <span class="truncate">Summary</span>
+        </button>
+        <button class="quick-action-btn py-1.5 px-2 bg-slate-800/90 hover:bg-emerald-600/20 hover:border-emerald-500/50 border border-slate-700/80 rounded-lg text-[11px] text-slate-300 flex items-center gap-1.5 transition text-left" data-action="actions">
+          <i data-lucide="check-square" class="w-3.5 h-3.5 text-emerald-400 flex-shrink-0"></i>
+          <span class="truncate">Action Items</span>
+        </button>
+        <button class="quick-action-btn py-1.5 px-2 bg-slate-800/90 hover:bg-amber-600/20 hover:border-amber-500/50 border border-slate-700/80 rounded-lg text-[11px] text-slate-300 flex items-center gap-1.5 transition text-left" data-action="faq">
+          <i data-lucide="help-circle" class="w-3.5 h-3.5 text-amber-400 flex-shrink-0"></i>
+          <span class="truncate">Auto FAQ</span>
+        </button>
+        <button class="quick-action-btn py-1.5 px-2 bg-slate-800/90 hover:bg-rose-600/20 hover:border-rose-500/50 border border-slate-700/80 rounded-lg text-[11px] text-slate-300 flex items-center gap-1.5 transition text-left" data-action="risks">
+          <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-rose-400 flex-shrink-0"></i>
+          <span class="truncate">Risks Audit</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ==================== MAIN CHAT AREA ==================== -->
+  <main class="flex-1 flex flex-col bg-slate-950 relative min-w-0">
+    <!-- Top Bar -->
+    <header class="h-14 border-b border-slate-800/80 px-6 flex items-center justify-between bg-slate-950/60 backdrop-blur z-10">
+      <div class="flex items-center gap-3">
+        <div id="status-indicator" class="flex items-center gap-2 text-xs text-slate-300">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="active-engine-badge" class="font-medium">Hybrid RAG Ready</span>
+        </div>
+        <span class="text-slate-600">|</span>
+        <span id="corpus-stat-badge" class="text-xs text-slate-400 flex items-center gap-1">
+          <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+          <span id="total-chunks-label">0 indexed chunks</span>
+        </span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button id="clear-chat-btn" class="px-2.5 py-1 text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 rounded-md transition flex items-center gap-1.5">
+          <i data-lucide="eraser" class="w-3.5 h-3.5"></i>
+          <span>Clear Chat</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Chat Messages Container -->
+    <div id="messages-container" class="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 custom-scrollbar">
+      
+      <!-- Welcome Hero / Suggestion Cards -->
+      <div id="welcome-hero" class="max-w-2xl mx-auto my-6 text-center space-y-4">
+        <div class="inline-flex p-3 rounded-2xl bg-gradient-to-tr from-indigo-500/20 to-violet-500/20 border border-indigo-500/30 text-indigo-400 shadow-xl">
+          <i data-lucide="book-open-check" class="w-10 h-10"></i>
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold text-white tracking-tight">Ask anything about your documents</h2>
+          <p class="text-slate-400 text-sm mt-1">Ground answers with BM25 + Vector Hybrid Retrieval, exact snippet citations, and multi-model synthesis.</p>
+        </div>
+
+        <!-- Sample Questions -->
+        <div class="pt-2 text-left">
+          <p class="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2.5 text-center">Try asking these with sample docs loaded:</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <button class="prompt-chip p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-850 text-slate-300 text-left transition flex items-start gap-2.5 group">
+              <i data-lucide="shield" class="w-4 h-4 text-indigo-400 mt-0.5 flex-shrink-0 group-hover:scale-110 transition"></i>
+              <span>What are the approved enterprise AI models and prohibited usages?</span>
+            </button>
+            <button class="prompt-chip p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-850 text-slate-300 text-left transition flex items-start gap-2.5 group">
+              <i data-lucide="cpu" class="w-4 h-4 text-violet-400 mt-0.5 flex-shrink-0 group-hover:scale-110 transition"></i>
+              <span>Summarize Project Aurora's latency SLA and hardware specs.</span>
+            </button>
+            <button class="prompt-chip p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-850 text-slate-300 text-left transition flex items-start gap-2.5 group">
+              <i data-lucide="trending-up" class="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0 group-hover:scale-110 transition"></i>
+              <span>Which departments exceeded their Q3 targets vs over budget?</span>
+            </button>
+            <button class="prompt-chip p-3 rounded-xl bg-slate-900 border border-slate-800 hover:border-indigo-500/50 hover:bg-slate-850 text-slate-300 text-left transition flex items-start gap-2.5 group">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0 group-hover:scale-110 transition"></i>
+              <span>What is the incident protocol if confidential Tier 3 data leaks?</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Input Box & Bottom Bar -->
+    <div class="p-4 border-t border-slate-800/80 bg-slate-950/80 backdrop-blur">
+      <div class="max-w-4xl mx-auto">
+        <form id="chat-form" class="relative flex items-end bg-slate-900 border border-slate-700/80 rounded-2xl shadow-xl focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500/40 transition">
+          <textarea 
+            id="user-input" 
+            rows="1" 
+            placeholder="Ask a question or request a synthesis from your documents..." 
+            class="w-full bg-transparent text-slate-100 placeholder-slate-500 text-sm py-3.5 pl-4 pr-14 focus:outline-none resize-none max-h-36 custom-scrollbar"
+          ></textarea>
+          <button 
+            type="submit" 
+            id="send-btn" 
+            class="absolute right-2.5 bottom-2.5 p-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 disabled:cursor-not-allowed transition shadow-md shadow-indigo-600/30 flex items-center justify-center"
+          >
+            <i data-lucide="arrow-up" class="w-4 h-4"></i>
+          </button>
+        </form>
+        <div class="flex items-center justify-between text-[11px] text-slate-400 mt-2 px-2">
+          <span>Press <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px]">Enter</kbd> to send, <kbd class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px]">Shift+Enter</kbd> for new line</span>
+          <span id="active-provider-label">Offline Extractive Mode (Free / Zero Setup)</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== SETTINGS MODAL ==================== -->
+  <div id="settings-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-5">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center">
+            <i data-lucide="sliders" class="w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-base text-white">RAG & Model Settings</h3>
+            <p class="text-xs text-slate-400">Configure LLM providers and retrieval hyperparameters</p>
+          </div>
+        </div>
+        <button id="close-settings-btn" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="settings-form" class="space-y-4">
+        <!-- Provider Selection -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">LLM Provider</label>
+          <select id="setting-provider" class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500">
+            <option value="gemini">Google Gemini (Recommended — Free Tier Available)</option>
+            <option value="openai">OpenAI (GPT-4o, GPT-4o-mini)</option>
+            <option value="ollama">Local Ollama (Offline / Private Server)</option>
+            <option value="offline">Built-in Extractive Engine (Zero API Key)</option>
+          </select>
+        </div>
+
+        <!-- API Key -->
+        <div id="api-key-group">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5 flex items-center justify-between">
+            <span>API Key</span>
+            <span id="api-key-status" class="text-[11px] text-slate-400 font-normal">Not configured</span>
+          </label>
+          <input 
+            type="password" 
+            id="setting-api-key" 
+            placeholder="Paste your Gemini or OpenAI API Key here" 
+            class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500"
+          >
+          <p class="text-[11px] text-slate-400 mt-1">Get a free Gemini API key in 10 seconds at <a href="https://aistudio.google.com/app/apikey" target="_blank" class="text-indigo-400 hover:underline">aistudio.google.com</a>.</p>
+        </div>
+
+        <!-- Model Name -->
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Model Name</label>
+          <input 
+            type="text" 
+            id="setting-model" 
+            value="gemini-1.5-flash" 
+            placeholder="e.g. gemini-1.5-flash, gemini-2.5-flash, gpt-4o-mini" 
+            class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500"
+          >
+        </div>
+
+        <!-- Custom Endpoint (for Ollama) -->
+        <div id="custom-endpoint-group" class="hidden">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">Endpoint URL</label>
+          <input 
+            type="text" 
+            id="setting-endpoint" 
+            placeholder="http://localhost:11434/v1/chat/completions" 
+            class="w-full bg-slate-800 border border-slate-700 text-slate-200 text-sm rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500"
+          >
+        </div>
+
+        <!-- Advanced RAG Parameters -->
+        <div class="border-t border-slate-800 pt-3 space-y-3">
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-300">
+            <span>Chunk Size (chars): <span id="chunk-size-val" class="text-indigo-400">700</span></span>
+            <input type="range" id="setting-chunk-size" min="300" max="1500" step="50" value="700" class="w-32 accent-indigo-500">
+          </div>
+          <div class="flex items-center justify-between text-xs font-semibold text-slate-300">
+            <span>Top-K Retrieved Excerpts: <span id="top-k-val" class="text-indigo-400">5</span></span>
+            <input type="range" id="setting-top-k" min="2" max="10" step="1" value="5" class="w-32 accent-indigo-500">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+          <button type="button" id="cancel-settings-btn" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-xl text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30 transition">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== DOCUMENT PREVIEW MODAL ==================== -->
+  <div id="doc-preview-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5 text-indigo-400"></i>
+          <h3 id="preview-modal-title" class="font-bold text-sm text-white">Document Preview</h3>
+        </div>
+        <button id="close-preview-btn" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-4 flex-1 overflow-y-auto space-y-4 custom-scrollbar">
+        <div id="preview-stats-bar" class="flex items-center gap-4 text-xs text-slate-400 bg-slate-950/50 p-2.5 rounded-lg border border-slate-800"></div>
+        <div class="space-y-1">
+          <h4 class="text-xs uppercase tracking-wider font-semibold text-slate-400">Extracted Text Content:</h4>
+          <pre id="preview-modal-content" class="text-xs text-slate-300 font-mono bg-slate-950 p-4 rounded-xl border border-slate-800 whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto custom-scrollbar"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CITATION INSPECTOR MODAL ==================== -->
+  <div id="citation-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-xl w-full p-5 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+          <h3 class="font-bold text-sm text-white flex items-center gap-2">
+            Verified Source Passage
+          </h3>
+        </div>
+        <button id="close-citation-btn" class="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between text-xs text-slate-400 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800">
+          <div>Document: <span id="citation-filename" class="font-semibold text-indigo-300"></span></div>
+          <div>Page: <span id="citation-page" class="font-semibold text-white"></span></div>
+          <div>Relevance: <span id="citation-score" class="font-semibold text-emerald-400"></span></div>
+        </div>
+        <div>
+          <p class="text-xs text-slate-400 font-semibold mb-1">Grounding Text Excerpt:</p>
+          <div id="citation-snippet" class="text-xs text-slate-200 bg-slate-950 p-3.5 rounded-xl border border-slate-800 leading-relaxed font-sans"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

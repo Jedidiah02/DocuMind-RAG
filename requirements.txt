@@ -1,0 +1,3 @@
+# Optional requirements for enhanced PDF parsing
+# The core app runs out-of-the-box on standard Python 3 with ZERO external dependencies!
+pypdf>=4.0.0

@@ -1,0 +1,11 @@
+Metric_ID,Quarter,Department,Category,Metric_Name,Target_Value,Actual_Value,Variance_Pct,Status
+M-101,Q3-2026,Finance,Revenue,Annual Recurring Revenue (ARR),$45.0M,$48.2M,+7.1%,Exceeded
+M-102,Q3-2026,Finance,Margin,Gross Margin Percentage,78.0%,81.5%,+4.5%,Exceeded
+M-103,Q3-2026,Sales,Growth,Net New Logo Acquisitions,150,168,+12.0%,Exceeded
+M-104,Q3-2026,Customer Success,Retention,Net Revenue Retention (NRR),115.0%,118.4%,+2.9%,Exceeded
+M-105,Q3-2026,Customer Success,Churn,Monthly Logo Churn Rate,0.9%,0.6%,-33.3%,Exceeded
+M-106,Q3-2026,Marketing,Efficiency,Customer Acquisition Cost (CAC),$4200,$3850,-8.3%,Exceeded
+M-107,Q3-2026,Engineering,Cost,Cloud Infrastructure Spend (AWS/GCP),$1.2M,$1.38M,+15.0%,Over Budget
+M-108,Q3-2026,Product,Velocity,Sprint Story Points Delivered,1450,1390,-4.1%,At Risk
+M-109,Q3-2026,People,Hiring,Key Engineering Hires Closed,24,21,-12.5%,Behind Target
+M-110,Q3-2026,Executive,Runway,Cash Balance & Liquid Reserves,$32.5M,$34.1M,+4.9%,Healthy
